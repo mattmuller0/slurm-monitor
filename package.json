@@ -1,0 +1,338 @@
+{
+  "name": "slurm-monitor",
+  "displayName": "SLURM Job Monitor",
+  "description": "Monitor and manage SLURM cluster jobs directly from VS Code",
+  "version": "0.2.0",
+  "publisher": "matthew-muller",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "slurm",
+    "hpc",
+    "cluster",
+    "jobs",
+    "scheduler"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "slurm-explorer",
+          "title": "SLURM Jobs",
+          "icon": "$(server-process)"
+        }
+      ]
+    },
+    "views": {
+      "slurm-explorer": [
+        {
+          "id": "slurmJobs",
+          "name": "My Jobs",
+          "icon": "$(tasklist)",
+          "contextualTitle": "SLURM Jobs"
+        },
+        {
+          "id": "slurmQueue",
+          "name": "Cluster Queue",
+          "icon": "$(list-unordered)",
+          "contextualTitle": "Cluster Queue"
+        },
+        {
+          "id": "slurmHistory",
+          "name": "Job History",
+          "icon": "$(history)",
+          "contextualTitle": "Job History"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "slurm.refresh",
+        "title": "Refresh Jobs",
+        "icon": "$(refresh)",
+        "category": "SLURM"
+      },
+      {
+        "command": "slurm.cancelJob",
+        "title": "Cancel Job",
+        "icon": "$(trash)",
+        "category": "SLURM"
+      },
+      {
+        "command": "slurm.showJobDetails",
+        "title": "Show Job Details",
+        "icon": "$(info)",
+        "category": "SLURM"
+      },
+      {
+        "command": "slurm.submitJob",
+        "title": "Submit Job Script",
+        "icon": "$(play)",
+        "category": "SLURM"
+      },
+      {
+        "command": "slurm.submitCurrentFile",
+        "title": "Submit Current File as Job",
+        "icon": "$(run)",
+        "category": "SLURM"
+      },
+      {
+        "command": "slurm.openOutput",
+        "title": "Open Job Output",
+        "icon": "$(file)",
+        "category": "SLURM"
+      },
+      {
+        "command": "slurm.openError",
+        "title": "Open Job Error Log",
+        "icon": "$(warning)",
+        "category": "SLURM"
+      },
+      {
+        "command": "slurm.toggleAutoRefresh",
+        "title": "Toggle Auto-Refresh",
+        "category": "SLURM"
+      },
+      {
+        "command": "slurm.showDashboard",
+        "title": "Show Cluster Dashboard",
+        "icon": "$(dashboard)",
+        "category": "SLURM"
+      },
+      {
+        "command": "slurm.showResourceUsage",
+        "title": "Show Resource Usage",
+        "icon": "$(graph)",
+        "category": "SLURM"
+      },
+      {
+        "command": "slurm.showQueueEstimates",
+        "title": "Show Queue Wait Time Estimates",
+        "icon": "$(clock)",
+        "category": "SLURM"
+      },
+      {
+        "command": "slurm.refreshHistory",
+        "title": "Refresh Job History",
+        "icon": "$(refresh)",
+        "category": "SLURM"
+      },
+      {
+        "command": "slurm.filterJobs",
+        "title": "Filter Jobs",
+        "icon": "$(filter)",
+        "category": "SLURM"
+      },
+      {
+        "command": "slurm.clearFilter",
+        "title": "Clear Job Filter",
+        "icon": "$(clear-all)",
+        "category": "SLURM"
+      },
+      {
+        "command": "slurm.resubmitJob",
+        "title": "Resubmit Job",
+        "icon": "$(debug-restart)",
+        "category": "SLURM"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "slurm.refresh",
+          "when": "view == slurmJobs || view == slurmQueue",
+          "group": "navigation@1"
+        },
+        {
+          "command": "slurm.filterJobs",
+          "when": "view == slurmJobs || view == slurmQueue",
+          "group": "navigation@2"
+        },
+        {
+          "command": "slurm.submitJob",
+          "when": "view == slurmJobs",
+          "group": "navigation@3"
+        },
+        {
+          "command": "slurm.showDashboard",
+          "when": "view == slurmJobs || view == slurmQueue",
+          "group": "navigation@4"
+        },
+        {
+          "command": "slurm.refreshHistory",
+          "when": "view == slurmHistory",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "slurm.showJobDetails",
+          "when": "view == slurmJobs && viewItem =~ /^(job|array-job)/",
+          "group": "inline@1"
+        },
+        {
+          "command": "slurm.cancelJob",
+          "when": "view == slurmJobs && viewItem =~ /^(job-(running|pending)|array-job-cancellable)/",
+          "group": "inline@2"
+        },
+        {
+          "command": "slurm.resubmitJob",
+          "when": "view == slurmJobs && viewItem =~ /^(job|array-job)/",
+          "group": "inline@3"
+        },
+        {
+          "command": "slurm.openOutput",
+          "when": "view == slurmJobs && viewItem =~ /^job/",
+          "group": "2_files@1"
+        },
+        {
+          "command": "slurm.openError",
+          "when": "view == slurmJobs && viewItem =~ /^job/",
+          "group": "2_files@2"
+        },
+        {
+          "command": "slurm.resubmitJob",
+          "when": "view == slurmJobs && viewItem =~ /^(job|array-job)/",
+          "group": "3_actions@1"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "slurm.submitCurrentFile",
+          "when": "resourceExtname == .slurm || resourceExtname == .sbatch || resourceExtname == .sh",
+          "group": "navigation"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "slurm.showDashboard",
+          "when": "true"
+        },
+        {
+          "command": "slurm.showQueueEstimates",
+          "when": "true"
+        },
+        {
+          "command": "slurm.submitCurrentFile",
+          "when": "editorIsOpen"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "SLURM Monitor",
+      "properties": {
+        "slurm.refreshInterval": {
+          "type": "number",
+          "default": 30,
+          "minimum": 5,
+          "description": "Auto-refresh interval in seconds"
+        },
+        "slurm.autoRefresh": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically refresh job list"
+        },
+        "slurm.sshHost": {
+          "type": "string",
+          "default": "",
+          "description": "SSH host for remote SLURM cluster (leave empty for local)"
+        },
+        "slurm.sshUser": {
+          "type": "string",
+          "default": "",
+          "description": "SSH username (defaults to current user)"
+        },
+        "slurm.sshKeyPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to SSH private key"
+        },
+        "slurm.squeueFormat": {
+          "type": "string",
+          "default": "%i|%j|%P|%T|%M|%l|%D|%R|%S|%e",
+          "description": "Custom squeue format string"
+        },
+        "slurm.showAllUsers": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show jobs from all users in the queue view"
+        },
+        "slurm.partitionFilter": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Filter jobs by partition names"
+        },
+        "slurm.maxJobsDisplayed": {
+          "type": "number",
+          "default": 100,
+          "description": "Maximum number of jobs to display"
+        },
+        "slurm.enableNotifications": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable desktop notifications for job state changes"
+        },
+        "slurm.notifyOnComplete": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show notification when a job completes"
+        },
+        "slurm.notifyOnFail": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show notification when a job fails"
+        },
+        "slurm.notifyOnStart": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show notification when a job starts running"
+        }
+      }
+    },
+    "languages": [
+      {
+        "id": "slurm",
+        "aliases": ["SLURM", "sbatch"],
+        "extensions": [".slurm", ".sbatch"],
+        "configuration": "./language-configuration.json"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts",
+    "package": "vsce package",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:integration": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.11",
+    "@types/node": "^20.10.0",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "@vscode/test-electron": "^2.3.8",
+    "@vscode/vsce": "^2.22.0",
+    "eslint": "^8.54.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.1",
+    "typescript": "^5.9.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mattmuller0/slurm-monitor"
+  }
+}
