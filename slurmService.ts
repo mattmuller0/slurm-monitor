@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { exec, spawn, ChildProcess } from 'child_process';
 import { promisify } from 'util';
 import * as os from 'os';
-import { SlurmJob, SlurmJobDetails, SlurmConfig, CommandResult, ClusterInfo, SlurmPartition, SubmitOptions, JobFilter, JobState, JobResourceUsage, QueueEstimate, JobHistoryEntry } from './types';
+import { SlurmJob, SlurmJobDetails, SlurmConfig, CommandResult, ClusterInfo, SlurmPartition, SubmitOptions, JobFilter, JobState, JobResourceUsage, JobHistoryEntry } from './types';
 
 const execAsync = promisify(exec);
 
@@ -396,74 +396,7 @@ export class SlurmService {
         return null;
     }
 
-    // Feature 10: Queue Wait Time Estimates
-    public async getQueueEstimates(): Promise<QueueEstimate[]> {
-        const partitions = await this.getPartitions();
-        const estimates: QueueEstimate[] = [];
-
-        // Get pending jobs count per partition
-        const pendingResult = await this.executeCommand(
-            'squeue -t PENDING -o "%P" --noheader | sort | uniq -c'
-        );
-
-        const pendingByPartition: Record<string, number> = {};
-        if (pendingResult.success && pendingResult.stdout) {
-            for (const line of pendingResult.stdout.split('\n')) {
-                const match = line.trim().match(/(\d+)\s+(\S+)/);
-                if (match) pendingByPartition[match[2]] = parseInt(match[1], 10);
-            }
-        }
-
-        // Get average wait time from recent jobs using sacct
-        const avgWaitResult = await this.executeCommand(
-            `sacct -S $(date -d '7 days ago' +%Y-%m-%d 2>/dev/null || date -v-7d +%Y-%m-%d) -o Partition,Elapsed,Start,Submit -P --noheader -s CD,CA,F,TO | head -500`
-        );
-
-        const waitTimesByPartition: Record<string, number[]> = {};
-        if (avgWaitResult.success && avgWaitResult.stdout) {
-            for (const line of avgWaitResult.stdout.split('\n')) {
-                const f = line.split('|');
-                if (f.length >= 4 && f[2] && f[3]) {
-                    const partition = f[0];
-                    const start = new Date(f[2]).getTime();
-                    const submit = new Date(f[3]).getTime();
-                    if (!isNaN(start) && !isNaN(submit)) {
-                        const waitMs = start - submit;
-                        if (waitMs >= 0) {
-                            if (!waitTimesByPartition[partition]) waitTimesByPartition[partition] = [];
-                            waitTimesByPartition[partition].push(waitMs);
-                        }
-                    }
-                }
-            }
-        }
-
-        for (const partition of partitions) {
-            const waitTimes = waitTimesByPartition[partition.name] || [];
-            const avgWaitMs = waitTimes.length > 0
-                ? waitTimes.reduce((a, b) => a + b, 0) / waitTimes.length
-                : 0;
-
-            estimates.push({
-                partition: partition.name,
-                pendingJobs: pendingByPartition[partition.name] || 0,
-                avgWaitTime: this.formatDuration(avgWaitMs),
-            });
-        }
-
-        return estimates;
-    }
-
-    private formatDuration(ms: number): string {
-        if (ms <= 0) return 'N/A';
-        const hours = Math.floor(ms / 3600000);
-        const mins = Math.floor((ms % 3600000) / 60000);
-        if (hours > 24) return `${Math.floor(hours / 24)}d ${hours % 24}h`;
-        if (hours > 0) return `${hours}h ${mins}m`;
-        return `${mins}m`;
-    }
-
-    // Feature 12: Job History - get last X jobs for the user
+    // Job History - get last X jobs for the user
     public async getJobHistory(limit: number = 100): Promise<JobHistoryEntry[]> {
         const user = await this.getUser();
 

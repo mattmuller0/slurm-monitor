@@ -112,12 +112,6 @@
         "category": "SLURM"
       },
       {
-        "command": "slurm.showQueueEstimates",
-        "title": "Show Queue Wait Time Estimates",
-        "icon": "$(clock)",
-        "category": "SLURM"
-      },
-      {
         "command": "slurm.refreshHistory",
         "title": "Refresh Job History",
         "icon": "$(refresh)",
@@ -212,10 +206,6 @@
       "commandPalette": [
         {
           "command": "slurm.showDashboard",
-          "when": "true"
-        },
-        {
-          "command": "slurm.showQueueEstimates",
           "when": "true"
         },
         {

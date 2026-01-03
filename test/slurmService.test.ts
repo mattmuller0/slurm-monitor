@@ -448,38 +448,6 @@ describe('getJobHistory', () => {
     });
 });
 
-describe('getQueueEstimates', () => {
-    let service: SlurmService;
-    let mockOutputChannel: vscode.OutputChannel;
-
-    beforeEach(() => {
-        jest.clearAllMocks();
-        mockOutputChannel = vscode.window.createOutputChannel('test');
-        service = new SlurmService(mockOutputChannel);
-    });
-
-    it('should calculate queue estimates per partition', async () => {
-        mockExec.mockImplementation((cmd: any) => {
-            if (cmd.includes('sinfo -o "%P|%a|%l|%D|%C|%m|%f"')) {
-                return { stdout: 'gpu|up|4:00:00|10|100/50/10/160|64000|feature1', stderr: '' } as any;
-            }
-            if (cmd.includes('squeue -t PENDING')) {
-                return { stdout: '   5 gpu', stderr: '' } as any;
-            }
-            if (cmd.includes('sacct')) {
-                return { stdout: '', stderr: '' } as any;
-            }
-            return { stdout: '', stderr: '' } as any;
-        });
-
-        const estimates = await service.getQueueEstimates();
-
-        expect(estimates).toHaveLength(1);
-        expect(estimates[0].partition).toBe('gpu');
-        expect(estimates[0].pendingJobs).toBe(5);
-    });
-});
-
 describe('readRemoteFile', () => {
     let service: SlurmService;
     let mockOutputChannel: vscode.OutputChannel;

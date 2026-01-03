@@ -90,7 +90,6 @@ export function activate(context: vscode.ExtensionContext): void {
             if (!jobId) return;
             await showResourceUsagePanel(jobId);
         },
-        'slurm.showQueueEstimates': async () => { await showQueueEstimatesPanel(); },
         'slurm.refreshHistory': async () => { await historyProvider.refresh(); vscode.window.showInformationMessage('Job history refreshed'); },
         'slurm.filterJobs': async () => { await showFilterDialog(); },
         'slurm.clearFilter': async () => { jobsProvider.setFilter({}); queueProvider.setFilter({}); await refreshJobs(); },
@@ -438,35 +437,20 @@ async function showResourceUsagePanel(jobId: string): Promise<void> {
     panel.webview.html = html(`<h1>Resource Usage: Job ${esc(jobId)}</h1>${info}${stats}`);
 }
 
-// Queue Estimates Panel
-async function showQueueEstimatesPanel(): Promise<void> {
-    const estimates = await slurmService.getQueueEstimates();
-    const panel = vscode.window.createWebviewPanel('slurmQueueEstimates', 'Queue Wait Time Estimates', vscode.ViewColumn.One, {});
-    const rows = estimates.map(e => `<tr><td>${esc(e.partition)}</td><td>${e.pendingJobs}</td><td>${esc(e.avgWaitTime)}</td></tr>`).join('');
-
-    panel.webview.html = html(`
-        <h1>Queue Wait Time Estimates</h1>
-        <table><tr><th>Partition</th><th>Pending Jobs</th><th>Avg Wait Time (7d)</th></tr>${rows}</table>
-        <p class="note">Wait times are based on job history from the past 7 days. Actual wait times may vary.</p>
-    `);
-}
-
 // Cluster Dashboard
 async function showDashboard(): Promise<void> {
-    const [clusterInfo, partitions, quotas, estimates] = await Promise.all([
+    const [clusterInfo, partitions, quotas] = await Promise.all([
         slurmService.getClusterInfo(),
         slurmService.getDetailedPartitionInfo(),
-        slurmService.getQuotaInfo(),
-        slurmService.getQueueEstimates()
+        slurmService.getQuotaInfo()
     ]);
 
     const panel = vscode.window.createWebviewPanel('slurmDashboard', `SLURM Dashboard: ${clusterInfo.name}`, vscode.ViewColumn.One, {});
     const cpuPct = clusterInfo.totalCpus > 0 ? Math.round((clusterInfo.allocCpus / clusterInfo.totalCpus) * 100) : 0;
 
-    const partitionRows = partitions.map(p => {
-        const est = estimates.find(e => e.partition === p.name);
-        return `<tr><td>${esc(p.name)}${p.default ? ' (default)' : ''}</td><td>${p.state}</td><td>${p.totalNodes}</td><td>${p.allocNodes}</td><td>${p.idleNodes}</td><td>${esc(p.maxTime)}</td><td>${est?.pendingJobs || 0}</td><td>${est?.avgWaitTime || 'N/A'}</td></tr>`;
-    }).join('');
+    const partitionRows = partitions.map(p =>
+        `<tr><td>${esc(p.name)}${p.default ? ' (default)' : ''}</td><td>${p.state}</td><td>${p.totalNodes}</td><td>${p.allocNodes}</td><td>${p.idleNodes}</td><td>${esc(p.maxTime)}</td></tr>`
+    ).join('');
 
     const quotaSection = quotas.length > 0
         ? `<h2>Your Account Usage</h2><table><tr><th>Account</th><th>Usage</th><th>Limit</th></tr>${quotas.map(q => `<tr><td>${esc(q.account)}</td><td>${esc(q.usage)}</td><td>${esc(q.limit)}</td></tr>`).join('')}</table>`
@@ -480,7 +464,7 @@ async function showDashboard(): Promise<void> {
         <p><b>CPU Utilization:</b> ${cpuPct}%</p>
         <div class="bar"><div class="fill ${cpuPct > 80 ? 'red' : cpuPct > 50 ? 'yellow' : 'green'}" style="width:${cpuPct}%"></div></div>
         <h2>Partitions</h2>
-        <table><tr><th>Name</th><th>State</th><th>Nodes</th><th>Allocated</th><th>Idle</th><th>Max Time</th><th>Pending Jobs</th><th>Avg Wait</th></tr>${partitionRows}</table>
+        <table><tr><th>Name</th><th>State</th><th>Nodes</th><th>Allocated</th><th>Idle</th><th>Max Time</th></tr>${partitionRows}</table>
         ${quotaSection}
     `);
 }

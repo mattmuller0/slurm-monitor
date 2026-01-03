@@ -237,16 +237,6 @@ export interface JobResourceUsage {
 }
 
 /**
- * Queue wait time estimate
- */
-export interface QueueEstimate {
-    partition: string;
-    pendingJobs: number;
-    avgWaitTime: string;
-    estimatedStart?: string;
-}
-
-/**
  * Job history entry from sacct
  */
 export interface JobHistoryEntry extends SlurmJob {
