@@ -266,6 +266,82 @@ describe('SlurmService', () => {
 
             expect(executedCommand).toContain('-a 1-10%5');
         });
+
+        it('should quote script path containing spaces', async () => {
+            let executedCommand = '';
+            mockExec.mockImplementation((cmd: any) => {
+                executedCommand = cmd;
+                return { stdout: 'Submitted batch job 12345', stderr: '' } as any;
+            });
+
+            await service.submitJob({ scriptPath: '/path/with spaces/script.sh' });
+
+            expect(executedCommand).toContain('"/path/with spaces/script.sh"');
+        });
+
+        it('should quote script path containing double quotes', async () => {
+            let executedCommand = '';
+            mockExec.mockImplementation((cmd: any) => {
+                executedCommand = cmd;
+                return { stdout: 'Submitted batch job 12345', stderr: '' } as any;
+            });
+
+            await service.submitJob({ scriptPath: '/path/to/my"script.sh' });
+
+            expect(executedCommand).toContain('"/path/to/my\\"script.sh"');
+        });
+    });
+
+    describe('submitJob path validation', () => {
+        it('should throw when the script is not found (test -f fails)', async () => {
+            mockExec.mockImplementation((cmd: any) => {
+                if (cmd.includes('test -f')) throw { stderr: '', code: 1 };
+                return { stdout: '', stderr: '' } as any;
+            });
+
+            await expect(service.submitJob({ scriptPath: '/missing/script.sh' }))
+                .rejects.toThrow(/Script not found/);
+        });
+
+        it('should include the cluster hostname in the error when SSH is configured', async () => {
+            (service as any).config = { ...service.getConfig(), sshHost: 'bigpurple.med.nyu.edu' };
+            mockExec.mockImplementation((cmd: any) => {
+                if (cmd.includes('test -f')) throw { stderr: '', code: 1 };
+                return { stdout: '', stderr: '' } as any;
+            });
+
+            await expect(service.submitJob({ scriptPath: '/missing/script.sh' }))
+                .rejects.toThrow(/bigpurple\.med\.nyu\.edu/);
+        });
+
+        it('should submit when test -f succeeds (file found)', async () => {
+            mockExec.mockImplementation((cmd: any) => {
+                if (cmd.includes('test -f')) return { stdout: '', stderr: '' } as any;
+                return { stdout: 'Submitted batch job 12345', stderr: '' } as any;
+            });
+
+            const jobId = await service.submitJob({ scriptPath: '/gpfs/data/testuser/scripts/job.sh' });
+            expect(jobId).toBe('12345');
+        });
+
+        it('should route test -f through SSH when sshHost is configured', async () => {
+            (service as any).config = {
+                ...service.getConfig(),
+                sshHost: 'bigpurple.med.nyu.edu',
+                sshUser: 'testuser',
+            };
+            const commands: string[] = [];
+            mockExec.mockImplementation((cmd: any) => {
+                commands.push(cmd);
+                return { stdout: 'Submitted batch job 12345', stderr: '' } as any;
+            });
+
+            await service.submitJob({ scriptPath: '/gpfs/data/testuser/scripts/job.sh' });
+
+            const checkCmd = commands.find(c => c.includes('test -f'));
+            expect(checkCmd).toContain('ssh');
+            expect(checkCmd).toContain('bigpurple.med.nyu.edu');
+        });
     });
 
     describe('resubmitJob', () => {

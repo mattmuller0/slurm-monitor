@@ -193,6 +193,15 @@ export class SlurmService {
     }
 
     public async submitJob(options: SubmitOptions): Promise<string> {
+        const quotedPath = `"${options.scriptPath.replace(/"/g, '\\"')}"`;
+        const check = await this.executeCommand(`test -f ${quotedPath}`);
+        if (!check.success) {
+            throw new Error(
+                `Script not found: '${options.scriptPath}'` +
+                (this.config.sshHost ? ` on '${this.config.sshHost}'` : '')
+            );
+        }
+
         const args = ['sbatch'];
 
         for (const [key, flag] of Object.entries(SUBMIT_OPTIONS)) {
@@ -201,7 +210,7 @@ export class SlurmService {
         }
         if (options.mailType?.length) args.push('--mail-type', options.mailType.join(','));
         if (options.additionalArgs) args.push(...options.additionalArgs);
-        args.push(options.scriptPath);
+        args.push(quotedPath);
 
         const result = await this.executeCommand(args.join(' '));
         if (!result.success) throw new Error(`Failed to submit job: ${result.stderr}`);
