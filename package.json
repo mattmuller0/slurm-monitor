@@ -2,7 +2,7 @@
   "name": "slurm-monitor",
   "displayName": "SLURM Job Monitor",
   "description": "Monitor and manage SLURM cluster jobs directly from VS Code",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "publisher": "matthew-muller",
   "engines": {
     "vscode": "^1.85.0"
@@ -291,8 +291,14 @@
     "languages": [
       {
         "id": "slurm",
-        "aliases": ["SLURM", "sbatch"],
-        "extensions": [".slurm", ".sbatch"],
+        "aliases": [
+          "SLURM",
+          "sbatch"
+        ],
+        "extensions": [
+          ".slurm",
+          ".sbatch"
+        ],
         "configuration": "./language-configuration.json"
       }
     ]

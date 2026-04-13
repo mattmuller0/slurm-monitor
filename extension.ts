@@ -402,11 +402,14 @@ const BASE_STYLES = `
     th { background: var(--vscode-textCodeBlock-background); }
     .stats { display: flex; gap: 20px; flex-wrap: wrap; margin: 20px 0; }
     .note { color: var(--vscode-descriptionForeground); font-size: 0.9em; margin-top: 20px; }
-    .bar { width: 100%; height: 20px; background: var(--vscode-input-background); border-radius: 10px; overflow: hidden; margin: 10px 0; }
-    .fill { height: 100%; transition: width 0.3s; }
-    .green { background: #28a745; } .yellow { background: #ffc107; } .red { background: #dc3545; }
     .badge { display: inline-block; padding: 4px 12px; border-radius: 4px; font-weight: bold; color: white; }
     .code { font-family: monospace; background: var(--vscode-textCodeBlock-background); padding: 10px; border-radius: 4px; white-space: pre-wrap; }
+    .partition-state-pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-weight: 600; }
+    .partition-state-up { background: rgba(40, 167, 69, 0.2); color: #2ea043; }
+    .partition-state-down { background: rgba(220, 53, 69, 0.2); color: #f85149; }
+    .partition-state-drain { background: rgba(255, 193, 7, 0.2); color: #d29922; }
+    .partition-state-inactive { background: rgba(108, 117, 125, 0.25); color: var(--vscode-descriptionForeground); }
+    .partition-state-unknown { background: rgba(128, 128, 128, 0.2); color: var(--vscode-foreground); }
 `;
 
 const html = (body: string, extraStyles = '') =>
@@ -439,33 +442,31 @@ async function showResourceUsagePanel(jobId: string): Promise<void> {
 
 // Cluster Dashboard
 async function showDashboard(): Promise<void> {
-    const [clusterInfo, partitions, quotas] = await Promise.all([
+    const [clusterInfo, partitions] = await Promise.all([
         slurmService.getClusterInfo(),
-        slurmService.getDetailedPartitionInfo(),
-        slurmService.getQuotaInfo()
+        slurmService.getDetailedPartitionInfo()
     ]);
 
     const panel = vscode.window.createWebviewPanel('slurmDashboard', `SLURM Dashboard: ${clusterInfo.name}`, vscode.ViewColumn.One, {});
-    const cpuPct = clusterInfo.totalCpus > 0 ? Math.round((clusterInfo.allocCpus / clusterInfo.totalCpus) * 100) : 0;
+
+    const partitionStateClass = (state: string): string => {
+        const normalized = state.toUpperCase();
+        if (normalized.includes('DRAIN')) return 'partition-state-drain';
+        if (normalized.includes('DOWN')) return 'partition-state-down';
+        if (normalized.includes('INACTIVE')) return 'partition-state-inactive';
+        if (normalized.includes('UP')) return 'partition-state-up';
+        return 'partition-state-unknown';
+    };
 
     const partitionRows = partitions.map(p =>
-        `<tr><td>${esc(p.name)}${p.default ? ' (default)' : ''}</td><td>${p.state}</td><td>${p.totalNodes}</td><td>${p.allocNodes}</td><td>${p.idleNodes}</td><td>${esc(p.maxTime)}</td></tr>`
+        `<tr><td>${esc(p.name)}${p.default ? ' (default)' : ''}</td><td><span class="partition-state-pill ${partitionStateClass(p.state)}">${esc(p.state)}</span></td><td>${p.totalNodes}</td><td>${p.allocNodes}</td><td>${p.idleNodes}</td><td>${esc(p.maxTime)}</td></tr>`
     ).join('');
-
-    const quotaSection = quotas.length > 0
-        ? `<h2>Your Account Usage</h2><table><tr><th>Account</th><th>Usage</th><th>Limit</th></tr>${quotas.map(q => `<tr><td>${esc(q.account)}</td><td>${esc(q.usage)}</td><td>${esc(q.limit)}</td></tr>`).join('')}</table>`
-        : '';
 
     panel.webview.html = html(`
         <h1>${esc(clusterInfo.name)} Dashboard</h1>
         <p><b>SLURM Version:</b> ${esc(clusterInfo.slurmVersion)} | <b>Controller:</b> ${esc(clusterInfo.controlMachine)}</p>
-        <h2>Cluster Resources</h2>
-        <div class="stats">${stat(clusterInfo.totalNodes, 'Total Nodes')}${stat(clusterInfo.totalCpus, 'Total CPUs')}${stat(clusterInfo.allocCpus, 'Allocated', '#ffc107')}${stat(clusterInfo.idleCpus, 'Idle', '#28a745')}${stat(clusterInfo.downCpus, 'Down', '#dc3545')}</div>
-        <p><b>CPU Utilization:</b> ${cpuPct}%</p>
-        <div class="bar"><div class="fill ${cpuPct > 80 ? 'red' : cpuPct > 50 ? 'yellow' : 'green'}" style="width:${cpuPct}%"></div></div>
         <h2>Partitions</h2>
         <table><tr><th>Name</th><th>State</th><th>Nodes</th><th>Allocated</th><th>Idle</th><th>Max Time</th></tr>${partitionRows}</table>
-        ${quotaSection}
     `);
 }
 

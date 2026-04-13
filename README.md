@@ -8,7 +8,7 @@ Monitor and manage SLURM cluster jobs directly from Visual Studio Code. This ext
 - **Cluster Queue View**: Monitor the full cluster queue
 - **Job History**: View your recent completed jobs from sacct
 - **Status Bar Integration**: Quick overview of running/pending job counts
-- **Cluster Dashboard**: View cluster resources, partitions, and account usage
+- **Cluster Dashboard**: View cluster metadata and partition status
 - **Job Details Panel**: View comprehensive job information including resources, timing, and paths
 - **Job Management**: Cancel, resubmit jobs, submit scripts, view output/error logs
 - **SSH Support**: Connect to remote SLURM clusters via SSH
@@ -35,7 +35,7 @@ npm run compile
 vsce package --allow-missing-repository
 
 # Install the .vsix file
-code --install-extension slurm-monitor-0.2.0.vsix
+code --install-extension slurm-monitor-0.2.1.vsix
 ```
 
 ### Requirements
@@ -101,7 +101,7 @@ Access commands via Command Palette (`Ctrl+Shift+P` or `Cmd+Shift+P`) with the "
 | `SLURM: Submit Current File as Job` | Submit the currently open file |
 | `SLURM: Open Job Output` | Open the job's stdout file |
 | `SLURM: Open Job Error Log` | Open the job's stderr file |
-| `SLURM: Show Cluster Dashboard` | Display cluster status, partitions, and resources |
+| `SLURM: Show Cluster Dashboard` | Display cluster metadata and partition status |
 | `SLURM: Filter Jobs` | Filter jobs by partition, state, or name |
 | `SLURM: Clear Job Filter` | Remove active filters |
 | `SLURM: Toggle Auto-Refresh` | Enable/disable automatic refresh |

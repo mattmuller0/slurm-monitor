@@ -409,6 +409,34 @@ cpu|up|20|200/100/20/320`,
             expect(info.slurmVersion).toBe('23.02.0');
             expect(info.partitions).toHaveLength(2);
         });
+
+        it('should use SlurmctldHost and sinfo version as fallbacks', async () => {
+            mockExec.mockImplementation((cmd: any) => {
+                if (cmd.includes('scontrol show config')) {
+                    return {
+                        stdout: `ClusterName = prodcluster\nSlurmctldHost = ctl01(10.0.0.1),ctl02(10.0.0.2)`,
+                        stderr: ''
+                    } as any;
+                }
+                if (cmd.includes('sinfo --version')) {
+                    return { stdout: 'slurm 23.11.2', stderr: '' } as any;
+                }
+                if (cmd.includes('sinfo -o')) {
+                    return {
+                        stdout: `cpu|up|8|24/48/0/72`,
+                        stderr: ''
+                    } as any;
+                }
+                return { stdout: '', stderr: '' } as any;
+            });
+
+            const info = await service.getClusterInfo();
+
+            expect(info.name).toBe('prodcluster');
+            expect(info.controlMachine).toBe('ctl01');
+            expect(info.slurmVersion).toBe('23.11.2');
+            expect(info.partitions).toHaveLength(1);
+        });
     });
 
     describe('testConnection', () => {

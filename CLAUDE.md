@@ -15,7 +15,7 @@ npm run test:coverage                    # Jest with coverage report (output: co
 npx jest test/slurmService.test.ts       # Run a single test file
 npx jest -t "parses squeue output"       # Run tests matching a name pattern
 vsce package --allow-missing-repository  # Build .vsix package
-code --install-extension slurm-monitor-0.2.0.vsix --force  # Install locally
+code --install-extension slurm-monitor-0.2.1.vsix --force  # Install locally
 ```
 
 `npm run test:integration` uses the VSCode Electron runner (`@vscode/test-electron`), not Jest — it requires a running display and is separate from the Jest suite above.

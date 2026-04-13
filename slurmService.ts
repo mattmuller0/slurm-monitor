@@ -240,12 +240,29 @@ export class SlurmService {
     }
 
     public async getClusterInfo(): Promise<ClusterInfo> {
-        const [ctrlResult, partResult] = await Promise.all([
-            this.executeCommand('scontrol show config | grep -E "ClusterName|ControlMachine|SlurmctldVersion"'),
+        const [ctrlResult, versionResult, partResult] = await Promise.all([
+            this.executeCommand('scontrol show config'),
+            this.executeCommand('sinfo --version'),
             this.executeCommand('sinfo -o "%P|%a|%D|%C" --noheader')
         ]);
 
-        const getMatch = (r: RegExp) => ctrlResult.stdout.match(r)?.[1] || 'Unknown';
+        const cfg = ctrlResult.stdout || '';
+        const cleanToken = (v: string) => v.split(',')[0].split('(')[0].trim();
+        const getConfigValue = (...keys: string[]): string => {
+            for (const key of keys) {
+                const match = cfg.match(new RegExp(`${key}(?:\\[\\d+\\])?\\s*=\\s*(\\S+)`, 'i'));
+                if (match?.[1]) return cleanToken(match[1]);
+            }
+            return '';
+        };
+        const parseVersion = (): string => {
+            const fromConfig = getConfigValue('SlurmctldVersion', 'SlurmVersion');
+            if (fromConfig) return fromConfig;
+            const fromSinfo = (versionResult.stdout || '').match(/slurm\s+([^\s]+)/i)?.[1];
+            if (fromSinfo) return fromSinfo;
+            return 'Unknown';
+        };
+
         const partitions: SlurmPartition[] = [];
         let totalCpus = 0, allocCpus = 0, idleCpus = 0, downCpus = 0;
 
@@ -264,9 +281,9 @@ export class SlurmService {
         }
 
         return {
-            name: getMatch(/ClusterName\s*=\s*(\S+)/),
-            controlMachine: getMatch(/ControlMachine\s*=\s*(\S+)/),
-            slurmVersion: getMatch(/SlurmctldVersion\s*=\s*(\S+)/),
+            name: getConfigValue('ClusterName') || 'Unknown',
+            controlMachine: getConfigValue('ControlMachine', 'SlurmctldHost') || 'Unknown',
+            slurmVersion: parseVersion(),
             totalNodes: partitions.reduce((s, p) => s + p.totalNodes, 0),
             totalCpus, allocCpus, idleCpus, downCpus, totalMemory: 0, allocMemory: 0, partitions
         };
@@ -430,25 +447,6 @@ export class SlurmService {
                     maxRSS: f[11] || '', maxVMSize: f[12] || '', cpuTime: f[13] || ''
                 };
             });
-    }
-
-    // Feature 11: Get quota information
-    public async getQuotaInfo(): Promise<{ user: string; account: string; usage: string; limit: string }[]> {
-        const result = await this.executeCommand(
-            'sacctmgr show assoc where user=$(whoami) format=User,Account,GrpTRESMins,MaxTRESMins -P --noheader 2>/dev/null || echo ""'
-        );
-
-        if (!result.success || !result.stdout.trim()) return [];
-
-        return result.stdout.split('\n').filter(l => l.trim()).map(line => {
-            const f = line.split('|');
-            return {
-                user: f[0] || '',
-                account: f[1] || '',
-                usage: f[2] || 'N/A',
-                limit: f[3] || 'N/A',
-            };
-        });
     }
 
     // Get detailed partition info for dashboard
